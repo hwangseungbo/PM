@@ -3424,7 +3424,7 @@ namespace PM
 
                         DateTime utcDateTime = seoulDateTime.AddHours(-9); //클라이언트 컴퓨터가 서울(+9)로 표준시간대가 맞춰져 있다 가정하고 만들어진 코드다.
 
-                        //MessageBox.Show(utcDateTime.ToString());
+                        //MessageBox.Show(utcDateTime.ToString());dd
 
                         SYSTEMTIME st = new SYSTEMTIME();
                         st.wYear = (short)utcDateTime.Year;
