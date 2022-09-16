@@ -289,16 +289,16 @@ namespace PM
         // Form_Load 시자아아아악!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         private void Form1_Load(object sender, EventArgs e)
         {
-        //이미 프로그램이 실행 중 일때... 
-            System.Diagnostics.Process[] processes = null; 
-            string strCurrentProcess = System.Diagnostics.Process.GetCurrentProcess().ProcessName.ToUpper(); 
-            processes = System.Diagnostics.Process.GetProcessesByName(strCurrentProcess); 
-            if (processes.Length > 1) 
-            {
-                SystemSounds.Beep.Play();
-                MessageBox.Show(string.Format("'{0}' 프로그램이 이미 실행 중입니다.", System.Diagnostics.Process.GetCurrentProcess().ProcessName));
-                Application.Exit(); 
-            }
+        //(중복실행방지)이미 프로그램이 실행 중 일때... 
+            //System.Diagnostics.Process[] processes = null; 
+            //string strCurrentProcess = System.Diagnostics.Process.GetCurrentProcess().ProcessName.ToUpper(); 
+            //processes = System.Diagnostics.Process.GetProcessesByName(strCurrentProcess); 
+            //if (processes.Length > 1) 
+            //{
+            //    SystemSounds.Beep.Play();
+            //    MessageBox.Show(string.Format("'{0}' 프로그램이 이미 실행 중입니다.", System.Diagnostics.Process.GetCurrentProcess().ProcessName));
+            //    Application.Exit(); 
+            //}
 
             //timer2.Interval = 1000;
             //timer2.Start();
@@ -3191,10 +3191,11 @@ namespace PM
             }
             catch
             {
-                if (rbtnServer.Checked == true)
+                if (rbtnServer.Checked == true && Int32.TryParse(tboxSPort.Text, out int port))
                 {
                     SystemSounds.Beep.Play();
                     MessageBox.Show("포트번호를 확인해 주세요.");
+                    
                 }
             }
 
@@ -3262,8 +3263,8 @@ namespace PM
             }
 
 
-
-            if (rbtnClient.Checked == true)    //TS가 서버로 동작할 경우+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            //TS가 클라이언트로 동작할 경우+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if (rbtnClient.Checked == true)    
             {
                 string SIpNumb;
                 int CPortNum;
@@ -3300,7 +3301,7 @@ namespace PM
                 {
                     SystemSounds.Beep.Play();
                 }
-                catch
+                catch(Exception error)
                 {
                     SystemSounds.Beep.Play();
                     MessageBox.Show("IP, 포트번호, 싱크주기를 정확하게 입력해주세요.");
@@ -3331,39 +3332,49 @@ namespace PM
         //클라이언트로 동작시 돌아가는 쓰레드---------------------------------------------------------------------------------------
         private void ClientThread()
         {
-        retry:
-            string ipaddress = tboxCIP.Text;
-            int portnumber = int.Parse(tboxCPort.Text);
-            int period = int.Parse(tboxCSync.Text);
+        
 
-            try
+            while (TSTriger == true) //&& tc != null)
             {
-                tc = new TcpClient(ipaddress, portnumber);
-            }
-            catch (SocketException se)
-            {
-                lboxC.Items.Add("서버로부터 응답이 없어 연결하지 못했습니다.");
-                if (lboxC.Items.Count > 1000)
+
+            // 이부분 화일문 위로 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+            retry:
+                string ipaddress = tboxCIP.Text;
+                int portnumber = int.Parse(tboxCPort.Text);
+                int period = int.Parse(tboxCSync.Text);
+
+                try
                 {
-                    lboxC.Items.RemoveAt(0);
+                    tc = new TcpClient(ipaddress, portnumber);
                 }
-                lboxC.SelectedIndex = lboxC.Items.Count - 1;
-                lboxC.SelectedIndex = -1;
-                lboxC.Items.Add("잠시 후 다시 연결을 시도합니다.");
-                if (lboxC.Items.Count > 1000)
+                catch (IOException io)
+                { }
+                catch (SocketException se)
                 {
-                    lboxC.Items.RemoveAt(0);
+                    lboxC.Items.Add("서버로부터 응답이 없어 연결하지 못했습니다.");
+                    if (lboxC.Items.Count > 1000)
+                    {
+                        lboxC.Items.RemoveAt(0);
+                    }
+                    lboxC.SelectedIndex = lboxC.Items.Count - 1;
+                    lboxC.SelectedIndex = -1;
+                    lboxC.Items.Add("10초 후 다시 연결을 시도합니다.");
+                    if (lboxC.Items.Count > 1000)
+                    {
+                        lboxC.Items.RemoveAt(0);
+                    }
+                    lboxC.SelectedIndex = lboxC.Items.Count - 1;
+                    lboxC.SelectedIndex = -1;
+
+                    Thread.Sleep(10000);
+                    if (TSClientTriger == true)
+                        goto retry;
                 }
-                lboxC.SelectedIndex = lboxC.Items.Count - 1;
-                lboxC.SelectedIndex = -1;
+                catch (Exception e)
+                { }
+                // 이부분 화일문 위로 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 
-                Thread.Sleep(5000);
-                if (TSClientTriger == true)
-                    goto retry;
-            }
 
-            while (TSTriger == true && tc != null)
-            {
                 if (tc.Connected)
                 {
                     lboxC.Items.Add("서버에 접속되었습니다.");
@@ -3395,13 +3406,12 @@ namespace PM
                     }
                     catch (IOException ioe)
                     {
-                        //lboxC.Items.Add("서버와의 연결이 끊어졌습니다.");
-                        //if (lboxC.Items.Count > 1000)
-                        //{
-                        //    lboxC.Items.RemoveAt(0);
-                        //}
-                        //lboxC.SelectedIndex = lboxC.Items.Count - 1;
-                        //lboxC.SelectedIndex = -1;
+                    }
+                    catch (SocketException soe)
+                    {
+                    }
+                    catch (Exception e)
+                    {
                     }
 
                     lboxC.Items.Add("타임서버의 현재시각 : " + strValue);
@@ -3421,7 +3431,7 @@ namespace PM
                         {
                             continue;
                         }
-
+                        
                         DateTime utcDateTime = seoulDateTime.AddHours(-9); //클라이언트 컴퓨터가 서울(+9)로 표준시간대가 맞춰져 있다 가정하고 만들어진 코드다.
 
                         //MessageBox.Show(utcDateTime.ToString());dd
@@ -3494,6 +3504,8 @@ namespace PM
                     // ---------------------------------------------------------------------------------
 
                     Thread.Sleep(period * 1000 * 60 * 60); //타임싱크 주기를 시간단위로 만들기 위해 기존 milli seconds 에서 1000을곱하여 seconds로, 60을 곱하여 minutes로, 60을 또 곱하여 hours로 바꾸었다.
+                    //현재 분으로 바뀐상태
+
                 }
                 else
                 {
@@ -3535,8 +3547,9 @@ namespace PM
 
                     if (tcpClient.Connected)
                     {
+                        string timenow = DateTime.Now.ToString("yyyy-MM-dd-HH-mm");
                         string str = ((IPEndPoint)tcpClient.Client.RemoteEndPoint).Address.ToString();  //접속한 클라이언트의 IP주소를 알아오는 방법
-                        lboxS.Items.Add(str + "에서 서버와 접속하였습니다.");
+                        lboxS.Items.Add(str + "에서 서버와 접속하였습니다. 접속시각:"+timenow);
                         if (lboxS.Items.Count > 1000)
                         {
                             lboxS.Items.RemoveAt(0);
@@ -3549,12 +3562,115 @@ namespace PM
                     Thread th = new Thread(new ThreadStart(echoServer.Process));
                     th.IsBackground = true;
                     th.Start();
+
+                }
+                catch(IOException ioe)
+                {
+                    //오류 로그 저장 시작---------------------------------------------------------------------
+                    string DirPath = Environment.CurrentDirectory;
+                    string FilePath = DirPath + "\\error" + ".txt";
+
+                    DirectoryInfo di = new DirectoryInfo(DirPath);
+                    FileInfo fi = new FileInfo(FilePath);
+
+                    try
+                    {
+                        //
+                        if (!di.Exists) Directory.CreateDirectory(DirPath);
+
+                        //error.txt가 존재하지 않을경우 생성.
+                        if (!fi.Exists)
+                        {
+                            using (StreamWriter sw = new StreamWriter(FilePath))
+                            {
+                                sw.WriteLine(ioe.ToString());
+                                sw.Close();
+                            }
+                        }
+                        else //error.txt 파일이 존재 할 경우
+                        {
+                            using (StreamWriter sw = new StreamWriter(FilePath))
+                            {
+                                sw.WriteLine(ioe.ToString());
+                                sw.Close();
+                            }
+                        }
+                    }
+                    catch { }
+                    //오류 로그 저장 끝---------------------------------------------------------------------
                 }
                 catch (SocketException se)
                 {
-                    //MessageBox.Show(se.Message);  //서버정지시 뜨는 WSA 에러
+                    //오류 로그 저장 시작---------------------------------------------------------------------
+                    string DirPath = Environment.CurrentDirectory;
+                    string FilePath = DirPath + "\\error" + ".txt";
+
+                    DirectoryInfo di = new DirectoryInfo(DirPath);
+                    FileInfo fi = new FileInfo(FilePath);
+
+                    try
+                    {
+                        //
+                        if (!di.Exists) Directory.CreateDirectory(DirPath);
+
+                        //error.txt가 존재하지 않을경우 생성.
+                        if (!fi.Exists)
+                        {
+                            using (StreamWriter sw = new StreamWriter(FilePath))
+                            {
+                                sw.WriteLine(se.ToString());
+                                sw.Close();
+                            }
+                        }
+                        else //error.txt 파일이 존재 할 경우
+                        {
+                            using (StreamWriter sw = new StreamWriter(FilePath))
+                            {
+                                sw.WriteLine(se.ToString());
+                                sw.Close();
+                            }
+                        }
+                    }
+                    catch { }
+                    //오류 로그 저장 끝---------------------------------------------------------------------
+                }
+                catch (Exception e)
+                {
+                    //오류 로그 저장 시작---------------------------------------------------------------------
+                    string DirPath = Environment.CurrentDirectory;
+                    string FilePath = DirPath + "\\error" + ".txt";
+
+                    DirectoryInfo di = new DirectoryInfo(DirPath);
+                    FileInfo fi = new FileInfo(FilePath);
+
+                    try
+                    {
+                        //
+                        if (!di.Exists) Directory.CreateDirectory(DirPath);
+
+                        //error.txt가 존재하지 않을경우 생성.
+                        if (!fi.Exists)
+                        {
+                            using (StreamWriter sw = new StreamWriter(FilePath))
+                            {
+                                sw.WriteLine(e.ToString());
+                                sw.Close();
+                            }
+                        }
+                        else //error.txt 파일이 존재 할 경우
+                        {
+                            using (StreamWriter sw = new StreamWriter(FilePath))
+                            {
+                                sw.WriteLine(e.ToString());
+                                sw.Close();
+                            }
+                        }
+                    }
+                    catch { }
+                    //오류 로그 저장 끝---------------------------------------------------------------------
                 }
             }
+            
         }
 
 
@@ -3724,8 +3840,43 @@ namespace PM
                 ns.Close();
                 ns = null;
                 RefClient.Close();
-                MessageBox.Show(se.Message);
+                //MessageBox.Show(se.Message);
                 Thread.CurrentThread.Abort();
+
+
+                //오류 로그 저장 시작---------------------------------------------------------------------
+                string DirPath = Environment.CurrentDirectory;
+                string FilePath = DirPath + "\\error" + ".txt";
+
+                DirectoryInfo di = new DirectoryInfo(DirPath);
+                FileInfo fi = new FileInfo(FilePath);
+
+                try
+                {
+                    //
+                    if (!di.Exists) Directory.CreateDirectory(DirPath);
+
+                    //error.txt가 존재하지 않을경우 생성.
+                    if (!fi.Exists)
+                    {
+                        using (StreamWriter sw = new StreamWriter(FilePath))
+                        {
+                            sw.WriteLine(se.ToString());
+                            sw.Close();
+                        }
+                    }
+                    else //error.txt 파일이 존재 할 경우
+                    {
+                        using (StreamWriter sw = new StreamWriter(FilePath))
+                        {
+                            sw.WriteLine(se.ToString());
+                            sw.Close();
+                        }
+                    }
+                }
+                catch { }
+                //오류 로그 저장 끝---------------------------------------------------------------------
+
             }
             catch (IOException ex)
             {
@@ -3736,6 +3887,81 @@ namespace PM
                 ns = null;
                 RefClient.Close();
                 Thread.CurrentThread.Abort();
+
+                //오류 로그 저장 시작---------------------------------------------------------------------
+                string DirPath = Environment.CurrentDirectory;
+                string FilePath = DirPath + "\\error" + ".txt";
+
+                DirectoryInfo di = new DirectoryInfo(DirPath);
+                FileInfo fi = new FileInfo(FilePath);
+
+                try
+                {
+                    //
+                    if (!di.Exists) Directory.CreateDirectory(DirPath);
+
+                    //error.txt가 존재하지 않을경우 생성.
+                    if (!fi.Exists)
+                    {
+                        using (StreamWriter sw = new StreamWriter(FilePath))
+                        {
+                            sw.WriteLine(ex.ToString());
+                            sw.Close();
+                        }
+                    }
+                    else //error.txt 파일이 존재 할 경우
+                    {
+                        using (StreamWriter sw = new StreamWriter(FilePath))
+                        {
+                            sw.WriteLine(ex.ToString());
+                            sw.Close();
+                        }
+                    }
+                }
+                catch { }
+                //오류 로그 저장 끝---------------------------------------------------------------------
+            }
+            catch (Exception e)
+            {
+                br.Close();
+                bw.Close();
+                ns.Close();
+                ns = null;
+                RefClient.Close();
+                Thread.CurrentThread.Abort();
+
+                //오류 로그 저장 시작---------------------------------------------------------------------
+                string DirPath = Environment.CurrentDirectory;
+                string FilePath = DirPath + "\\error" + ".txt";
+
+                DirectoryInfo di = new DirectoryInfo(DirPath);
+                FileInfo fi = new FileInfo(FilePath);
+
+                try
+                {
+                    //
+                    if (!di.Exists) Directory.CreateDirectory(DirPath);
+
+                    //error.txt가 존재하지 않을경우 생성.
+                    if (!fi.Exists)
+                    {
+                        using (StreamWriter sw = new StreamWriter(FilePath))
+                        {
+                            sw.WriteLine(e.ToString());
+                            sw.Close();
+                        }
+                    }
+                    else //error.txt 파일이 존재 할 경우
+                    {
+                        using (StreamWriter sw = new StreamWriter(FilePath))
+                        {
+                            sw.WriteLine(e.ToString());
+                            sw.Close();
+                        }
+                    }
+                }
+                catch { }
+                //오류 로그 저장 끝---------------------------------------------------------------------
             }
         }
     }
